@@ -1,0 +1,10 @@
+.ai_state
+.knowledge
+.tmp_bootstrap
+project_document
+src-tauri/target
+src-tauri/gen
+src-tauri/icons
+src-tauri/capabilities
+bun.lock
+
