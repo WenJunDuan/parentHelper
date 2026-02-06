@@ -1,0 +1,120 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 860" font-family="'SF Pro Display','PingFang SC',-apple-system,sans-serif">
+  <defs>
+    <linearGradient id="sb" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#faf5ff"/><stop offset="100%" stop-color="#f3e8ff"/></linearGradient>
+    <linearGradient id="ac" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#8b5cf6"/><stop offset="100%" stop-color="#a78bfa"/></linearGradient>
+    <filter id="cs"><feDropShadow dx="0" dy="2" stdDeviation="6" flood-color="#8b5cf618"/></filter>
+  </defs>
+  <text x="640" y="28" text-anchor="middle" font-size="16" font-weight="600" fill="#1e1b4b" opacity="0.6">UI-05  任务看板</text>
+
+  <rect x="30" y="42" width="1220" height="790" rx="14" fill="#fff" stroke="#e5e7eb" filter="url(#cs)"/>
+  <rect x="30" y="42" width="1220" height="40" rx="14" fill="#fafafa"/><rect x="30" y="68" width="1220" height="14" fill="#fafafa"/>
+  <circle cx="56" cy="62" r="5.5" fill="#ff5f57"/><circle cx="74" cy="62" r="5.5" fill="#ffbd2e"/><circle cx="92" cy="62" r="5.5" fill="#28c840"/>
+
+  <!-- 左导航(任务选中) -->
+  <rect x="30" y="82" width="68" height="750" fill="url(#sb)"/>
+  <rect x="37" y="94" width="54" height="52" rx="13" fill="transparent"/><text x="64" y="116" text-anchor="middle" font-size="17">💬</text><text x="64" y="136" text-anchor="middle" font-size="8" fill="#8b8b9e">对话</text>
+  <rect x="37" y="156" width="54" height="52" rx="13" fill="transparent"/><text x="64" y="178" text-anchor="middle" font-size="17">📚</text><text x="64" y="198" text-anchor="middle" font-size="8" fill="#8b8b9e">知识库</text>
+  <rect x="37" y="218" width="54" height="52" rx="13" fill="url(#ac)"/><text x="64" y="240" text-anchor="middle" font-size="17">✅</text><text x="64" y="260" text-anchor="middle" font-size="8" font-weight="600" fill="#fff">任务</text>
+  <line x1="44" y1="290" x2="84" y2="290" stroke="#e5e7eb" stroke-width="0.5"/>
+  <rect x="37" y="302" width="54" height="52" rx="13" fill="transparent"/><text x="64" y="324" text-anchor="middle" font-size="17">🤖</text><text x="64" y="344" text-anchor="middle" font-size="8" fill="#8b8b9e">Agent</text>
+  <rect x="37" y="364" width="54" height="52" rx="13" fill="transparent"/><text x="64" y="386" text-anchor="middle" font-size="17">🧠</text><text x="64" y="406" text-anchor="middle" font-size="8" fill="#8b8b9e">模型</text>
+
+  <!-- 主内容 -->
+  <rect x="98" y="82" width="1152" height="714" fill="#fafbfc"/>
+  <text x="130" y="118" font-size="20" font-weight="700" fill="#1e1b4b">✅ 学习任务</text>
+  <rect x="1060" y="96" width="120" height="32" rx="16" fill="url(#ac)"/>
+  <text x="1120" y="117" text-anchor="middle" font-size="11" font-weight="600" fill="#fff">+ 新建任务</text>
+
+  <!-- 统计卡片 -->
+  <rect x="130" y="138" width="180" height="56" rx="12" fill="#fff" filter="url(#cs)"/>
+  <text x="148" y="160" font-size="10" fill="#9ca3af">今日待办</text>
+  <text x="148" y="182" font-size="22" font-weight="700" fill="#8b5cf6">3</text><text x="176" y="182" font-size="10" fill="#9ca3af">个</text>
+
+  <rect x="326" y="138" width="180" height="56" rx="12" fill="#fff" filter="url(#cs)"/>
+  <text x="344" y="160" font-size="10" fill="#9ca3af">本周完成</text>
+  <text x="344" y="182" font-size="22" font-weight="700" fill="#22c55e">12</text><text x="380" y="182" font-size="10" fill="#9ca3af">个</text>
+
+  <rect x="522" y="138" width="180" height="56" rx="12" fill="#fff" filter="url(#cs)"/>
+  <text x="540" y="160" font-size="10" fill="#9ca3af">逾期未完</text>
+  <text x="540" y="182" font-size="22" font-weight="700" fill="#ef4444">1</text><text x="558" y="182" font-size="10" fill="#9ca3af">个</text>
+
+  <rect x="718" y="138" width="500" height="56" rx="12" fill="#fff" filter="url(#cs)"/>
+  <text x="736" y="160" font-size="10" fill="#9ca3af">寒假进度</text>
+  <rect x="736" y="170" width="400" height="6" rx="3" fill="#e5e7eb"/>
+  <rect x="736" y="170" width="240" height="6" rx="3" fill="#8b5cf6"/>
+  <text x="1196" y="182" text-anchor="end" font-size="13" font-weight="700" fill="#8b5cf6">60%</text>
+  <text x="736" y="190" font-size="8" fill="#9ca3af">18/30天</text>
+
+  <!-- 三列看板 -->
+  <!-- 待办 -->
+  <rect x="130" y="212" width="354" height="540" rx="12" fill="#f9fafb" stroke="#e5e7eb" stroke-width="0.5"/>
+  <text x="152" y="240" font-size="13" font-weight="600" fill="#1e1b4b">📋 待办</text>
+  <rect x="212" y="226" width="24" height="18" rx="9" fill="#ede9fe"/><text x="224" y="238" text-anchor="middle" font-size="9" font-weight="600" fill="#7c3aed">3</text>
+
+  <!-- 任务卡(逾期) -->
+  <rect x="142" y="258" width="330" height="92" rx="10" fill="#fff" stroke="#fecaca" stroke-width="1.5" filter="url(#cs)"/>
+  <rect x="142" y="258" width="4" height="92" rx="2" fill="#ef4444"/>
+  <text x="162" y="280" font-size="12" font-weight="600" fill="#1e1b4b">完成数学 P12-P15</text>
+  <rect x="162" y="288" width="36" height="16" rx="8" fill="#ede9fe"/><text x="180" y="300" text-anchor="middle" font-size="8" fill="#7c3aed">数学</text>
+  <rect x="204" y="288" width="50" height="16" rx="8" fill="#fef2f2"/><text x="229" y="300" text-anchor="middle" font-size="8" fill="#ef4444">⚠️ 逾期</text>
+  <text x="162" y="326" font-size="10" fill="#ef4444">截止: 昨天 19:00</text>
+  <rect x="162" y="332" width="52" height="14" rx="7" fill="#f5f3ff"/><text x="188" y="342" text-anchor="middle" font-size="7" fill="#8b5cf6">🤖 AI生成</text>
+
+  <!-- 任务卡(今天) -->
+  <rect x="142" y="362" width="330" height="82" rx="10" fill="#fff" filter="url(#cs)"/>
+  <rect x="142" y="362" width="4" height="82" rx="2" fill="#f59e0b"/>
+  <text x="162" y="384" font-size="12" font-weight="600" fill="#1e1b4b">背诵《望庐山瀑布》</text>
+  <rect x="162" y="392" width="36" height="16" rx="8" fill="#fff7ed"/><text x="180" y="404" text-anchor="middle" font-size="8" fill="#ea580c">语文</text>
+  <text x="162" y="428" font-size="10" fill="#9ca3af">截止: 今天 19:00</text>
+
+  <!-- 任务卡(明天) -->
+  <rect x="142" y="456" width="330" height="82" rx="10" fill="#fff" filter="url(#cs)"/>
+  <rect x="142" y="456" width="4" height="82" rx="2" fill="#3b82f6"/>
+  <text x="162" y="478" font-size="12" font-weight="600" fill="#1e1b4b">英语单词听写 Unit 3</text>
+  <rect x="162" y="486" width="36" height="16" rx="8" fill="#eff6ff"/><text x="180" y="498" text-anchor="middle" font-size="8" fill="#2563eb">英语</text>
+  <text x="162" y="522" font-size="10" fill="#9ca3af">截止: 明天 19:00</text>
+  <rect x="162" y="518" width="48" height="14" rx="7" fill="#f0fdf4"/><text x="186" y="528" text-anchor="middle" font-size="7" fill="#16a34a">✍️ 手动</text>
+
+  <!-- 进行中 -->
+  <rect x="500" y="212" width="354" height="540" rx="12" fill="#f9fafb" stroke="#e5e7eb" stroke-width="0.5"/>
+  <text x="522" y="240" font-size="13" font-weight="600" fill="#1e1b4b">🔄 进行中</text>
+  <rect x="608" y="226" width="24" height="18" rx="9" fill="#ede9fe"/><text x="620" y="238" text-anchor="middle" font-size="9" font-weight="600" fill="#7c3aed">2</text>
+
+  <rect x="512" y="258" width="330" height="82" rx="10" fill="#fff" filter="url(#cs)"/>
+  <rect x="512" y="258" width="4" height="82" rx="2" fill="#8b5cf6"/>
+  <text x="532" y="280" font-size="12" font-weight="600" fill="#1e1b4b">数学计算练习 (10题)</text>
+  <rect x="532" y="288" width="36" height="16" rx="8" fill="#ede9fe"/><text x="550" y="300" text-anchor="middle" font-size="8" fill="#7c3aed">数学</text>
+  <text x="532" y="326" font-size="10" fill="#9ca3af">截止: 今天 20:00</text>
+
+  <rect x="512" y="352" width="330" height="82" rx="10" fill="#fff" filter="url(#cs)"/>
+  <rect x="512" y="352" width="4" height="82" rx="2" fill="#f97316"/>
+  <text x="532" y="374" font-size="12" font-weight="600" fill="#1e1b4b">阅读理解练习</text>
+  <rect x="532" y="382" width="36" height="16" rx="8" fill="#fff7ed"/><text x="550" y="394" text-anchor="middle" font-size="8" fill="#ea580c">语文</text>
+  <text x="532" y="420" font-size="10" fill="#9ca3af">截止: 今天 21:00</text>
+
+  <!-- 已完成 -->
+  <rect x="870" y="212" width="354" height="540" rx="12" fill="#f9fafb" stroke="#e5e7eb" stroke-width="0.5"/>
+  <text x="892" y="240" font-size="13" font-weight="600" fill="#1e1b4b">✅ 已完成</text>
+  <rect x="970" y="226" width="24" height="18" rx="9" fill="#dcfce7"/><text x="982" y="238" text-anchor="middle" font-size="9" font-weight="600" fill="#16a34a">5</text>
+
+  <rect x="882" y="258" width="330" height="64" rx="10" fill="#fff" opacity="0.7" filter="url(#cs)"/>
+  <text x="902" y="282" font-size="12" fill="#9ca3af" text-decoration="line-through">乘法口诀表默写</text>
+  <text x="902" y="300" font-size="9" fill="#22c55e">✅ 今天 15:30</text>
+  <rect x="1010" y="290" width="36" height="14" rx="7" fill="#dcfce7"/><text x="1028" y="300" text-anchor="middle" font-size="7" fill="#16a34a">数学</text>
+
+  <rect x="882" y="332" width="330" height="64" rx="10" fill="#fff" opacity="0.7" filter="url(#cs)"/>
+  <text x="902" y="356" font-size="12" fill="#9ca3af" text-decoration="line-through">课文朗读-第八课</text>
+  <text x="902" y="374" font-size="9" fill="#22c55e">✅ 今天 14:00</text>
+
+  <rect x="882" y="406" width="330" height="64" rx="10" fill="#fff" opacity="0.7" filter="url(#cs)"/>
+  <text x="902" y="430" font-size="12" fill="#9ca3af" text-decoration="line-through">英语单词抄写 Unit 2</text>
+  <text x="902" y="448" font-size="9" fill="#22c55e">✅ 昨天 18:00</text>
+
+  <!-- 拖拽提示 -->
+  <text x="640" y="770" text-anchor="middle" font-size="10" fill="#d1d5db">💡 拖拽卡片到不同列来更新状态</text>
+
+  <!-- 状态栏 -->
+  <rect x="30" y="796" width="1220" height="36" fill="#f8f9fa"/>
+  <circle cx="56" cy="814" r="3.5" fill="#22c55e"/>
+  <text x="68" y="818" font-size="10" fill="#6b7280">Claude Sonnet │ 今日待办 3 · 逾期 1 · 寒假进度 60%</text>
+</svg>

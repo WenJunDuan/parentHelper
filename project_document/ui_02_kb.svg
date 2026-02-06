@@ -1,0 +1,89 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 860" font-family="'SF Pro Display','PingFang SC',-apple-system,sans-serif">
+  <defs>
+    <linearGradient id="sb" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#faf5ff"/><stop offset="100%" stop-color="#f3e8ff"/></linearGradient>
+    <linearGradient id="ac" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#8b5cf6"/><stop offset="100%" stop-color="#a78bfa"/></linearGradient>
+    <filter id="cs"><feDropShadow dx="0" dy="2" stdDeviation="6" flood-color="#8b5cf618"/></filter>
+  </defs>
+  <text x="640" y="28" text-anchor="middle" font-size="16" font-weight="600" fill="#1e1b4b" opacity="0.6">UI-02  知识库管理</text>
+
+  <rect x="30" y="42" width="1220" height="790" rx="14" fill="#fff" stroke="#e5e7eb" filter="url(#cs)"/>
+  <rect x="30" y="42" width="1220" height="40" rx="14" fill="#fafafa"/><rect x="30" y="68" width="1220" height="14" fill="#fafafa"/>
+  <circle cx="56" cy="62" r="5.5" fill="#ff5f57"/><circle cx="74" cy="62" r="5.5" fill="#ffbd2e"/><circle cx="92" cy="62" r="5.5" fill="#28c840"/>
+
+  <!-- 左导航(知识库选中) -->
+  <rect x="30" y="82" width="68" height="750" fill="url(#sb)"/>
+  <rect x="37" y="94" width="54" height="52" rx="13" fill="transparent"/><text x="64" y="116" text-anchor="middle" font-size="17">💬</text><text x="64" y="136" text-anchor="middle" font-size="8" fill="#8b8b9e">对话</text>
+  <rect x="37" y="156" width="54" height="52" rx="13" fill="url(#ac)"/><text x="64" y="178" text-anchor="middle" font-size="17">📚</text><text x="64" y="198" text-anchor="middle" font-size="8" font-weight="600" fill="#fff">知识库</text>
+  <rect x="37" y="218" width="54" height="52" rx="13" fill="transparent"/><text x="64" y="240" text-anchor="middle" font-size="17">✅</text><text x="64" y="260" text-anchor="middle" font-size="8" fill="#8b8b9e">任务</text>
+  <line x1="44" y1="290" x2="84" y2="290" stroke="#e5e7eb" stroke-width="0.5"/>
+  <rect x="37" y="302" width="54" height="52" rx="13" fill="transparent"/><text x="64" y="324" text-anchor="middle" font-size="17">🤖</text><text x="64" y="344" text-anchor="middle" font-size="8" fill="#8b8b9e">Agent</text>
+  <rect x="37" y="364" width="54" height="52" rx="13" fill="transparent"/><text x="64" y="386" text-anchor="middle" font-size="17">🧠</text><text x="64" y="406" text-anchor="middle" font-size="8" fill="#8b8b9e">模型</text>
+
+  <!-- 主内容 -->
+  <rect x="98" y="82" width="1152" height="714" fill="#fafbfc"/>
+  <text x="130" y="120" font-size="20" font-weight="700" fill="#1e1b4b">📚 我的知识库</text>
+  <text x="130" y="140" font-size="12" fill="#9ca3af">上传课本，小智就能帮你辅导作业啦~</text>
+  <rect x="1080" y="100" width="140" height="36" rx="18" fill="url(#ac)"/>
+  <text x="1150" y="123" text-anchor="middle" font-size="12" font-weight="600" fill="#fff">+ 创建知识库</text>
+
+  <!-- 卡片1: 数学(就绪) -->
+  <rect x="130" y="164" width="340" height="190" rx="14" fill="#fff" filter="url(#cs)"/>
+  <rect x="130" y="164" width="340" height="5" rx="2.5" fill="#8b5cf6"/>
+  <rect x="146" y="184" width="44" height="20" rx="10" fill="#ede9fe"/><text x="168" y="198" text-anchor="middle" font-size="9" font-weight="600" fill="#7c3aed">数学</text>
+  <rect x="198" y="184" width="52" height="20" rx="10" fill="#f3f4f6"/><text x="224" y="198" text-anchor="middle" font-size="9" fill="#6b7280">三年级</text>
+  <circle cx="434" cy="194" r="4" fill="#22c55e"/><text x="446" y="198" font-size="9" fill="#22c55e">已就绪</text>
+  <text x="146" y="230" font-size="15" font-weight="600" fill="#1e1b4b">三年级数学上册</text>
+  <text x="146" y="250" font-size="11" fill="#9ca3af">人教版 · 5 个文档 · 326 个知识片段</text>
+  <!-- 文档列表(缩略) -->
+  <rect x="146" y="264" width="308" height="28" rx="6" fill="#f9fafb"/>
+  <text x="158" y="282" font-size="9" fill="#6b7280">📄 第1章.pdf  📄 第2章.pdf  📄 第3章.pdf  +2</text>
+  <line x1="146" y1="304" x2="454" y2="304" stroke="#f3f4f6"/>
+  <text x="146" y="324" font-size="10" fill="#8b5cf6" font-weight="500">📄 管理文档</text>
+  <text x="380" y="324" font-size="10" fill="#ef4444" font-weight="500">🗑 删除</text>
+  <text x="436" y="340" font-size="8" fill="#d1d5db">2天前</text>
+
+  <!-- 卡片2: 语文(就绪) -->
+  <rect x="494" y="164" width="340" height="190" rx="14" fill="#fff" filter="url(#cs)"/>
+  <rect x="494" y="164" width="340" height="5" rx="2.5" fill="#f97316"/>
+  <rect x="510" y="184" width="44" height="20" rx="10" fill="#fff7ed"/><text x="532" y="198" text-anchor="middle" font-size="9" font-weight="600" fill="#ea580c">语文</text>
+  <rect x="562" y="184" width="52" height="20" rx="10" fill="#f3f4f6"/><text x="588" y="198" text-anchor="middle" font-size="9" fill="#6b7280">三年级</text>
+  <circle cx="798" cy="194" r="4" fill="#22c55e"/><text x="810" y="198" font-size="9" fill="#22c55e">已就绪</text>
+  <text x="510" y="230" font-size="15" font-weight="600" fill="#1e1b4b">三年级语文上册</text>
+  <text x="510" y="250" font-size="11" fill="#9ca3af">人教版 · 3 个文档 · 218 个知识片段</text>
+  <rect x="510" y="264" width="308" height="28" rx="6" fill="#f9fafb"/>
+  <text x="522" y="282" font-size="9" fill="#6b7280">📄 上册全本.pdf  📄 古诗汇总.pdf  +1</text>
+  <line x1="510" y1="304" x2="818" y2="304" stroke="#f3f4f6"/>
+  <text x="510" y="324" font-size="10" fill="#8b5cf6" font-weight="500">📄 管理文档</text>
+  <text x="744" y="324" font-size="10" fill="#ef4444" font-weight="500">🗑 删除</text>
+
+  <!-- 卡片3: 英语(处理中) -->
+  <rect x="858" y="164" width="340" height="190" rx="14" fill="#fff" filter="url(#cs)"/>
+  <rect x="858" y="164" width="340" height="5" rx="2.5" fill="#3b82f6"/>
+  <rect x="874" y="184" width="44" height="20" rx="10" fill="#eff6ff"/><text x="896" y="198" text-anchor="middle" font-size="9" font-weight="600" fill="#2563eb">英语</text>
+  <rect x="926" y="184" width="52" height="20" rx="10" fill="#f3f4f6"/><text x="952" y="198" text-anchor="middle" font-size="9" fill="#6b7280">三年级</text>
+  <circle cx="1162" cy="194" r="4" fill="#f59e0b"/><text x="1174" y="198" font-size="9" fill="#f59e0b">处理中</text>
+  <text x="874" y="230" font-size="15" font-weight="600" fill="#1e1b4b">三年级英语上册</text>
+  <text x="874" y="250" font-size="11" fill="#9ca3af">外研社 · 2 个文档</text>
+  <!-- 进度条 -->
+  <rect x="874" y="270" width="308" height="6" rx="3" fill="#e5e7eb"/>
+  <rect x="874" y="270" width="185" height="6" rx="3" fill="#3b82f6"/>
+  <text x="874" y="296" font-size="10" fill="#3b82f6" font-weight="500">向量化中... 60%</text>
+  <text x="1060" y="296" font-size="9" fill="#9ca3af">约需 2 分钟</text>
+  <line x1="874" y1="316" x2="1182" y2="316" stroke="#f3f4f6"/>
+  <text x="874" y="340" font-size="10" fill="#9ca3af">⏳ 请稍候...</text>
+
+  <!-- 虚线空卡片 -->
+  <rect x="130" y="378" width="340" height="190" rx="14" fill="#fafbfc" stroke="#d1d5db" stroke-width="1.5" stroke-dasharray="8,4"/>
+  <text x="300" y="468" text-anchor="middle" font-size="28" fill="#d1d5db">+</text>
+  <text x="300" y="498" text-anchor="middle" font-size="12" fill="#9ca3af">创建新知识库</text>
+
+  <!-- 拖拽上传提示区 -->
+  <rect x="130" y="596" width="1088" height="100" rx="14" fill="#fefce8" stroke="#fde68a" stroke-dasharray="6,3"/>
+  <text x="674" y="640" text-anchor="middle" font-size="14" fill="#a16207">📂 拖拽文件到这里，快速添加到知识库</text>
+  <text x="674" y="662" text-anchor="middle" font-size="11" fill="#ca8a04">支持 PDF、图片 (PNG/JPG)、Word 文档</text>
+
+  <!-- 状态栏 -->
+  <rect x="30" y="796" width="1220" height="36" fill="#f8f9fa"/>
+  <circle cx="56" cy="814" r="3.5" fill="#22c55e"/>
+  <text x="68" y="818" font-size="10" fill="#6b7280">Claude Sonnet │ 知识库: 2个就绪 · 1个处理中 │ 向量库: Supabase ✓</text>
+</svg>
