@@ -4,6 +4,7 @@ import { AnthropicClient } from './providers/anthropic'
 import { GoogleClient } from './providers/google'
 import { OpenAICompatClient } from './providers/openaiCompat'
 import { OpenAIClient } from './providers/openai'
+import { buildProviderRequest, parseProviderResponse } from './protocolAdapter'
 import type { LLMClient, LLMRequest } from './types'
 
 export function createLLMClient(provider: Provider): LLMClient {
@@ -27,4 +28,28 @@ export async function* streamChat(request: LLMRequest, provider: Provider): Asyn
   const client = createLLMClient(provider)
   await client.createStream(request)
   yield '[TODO] streaming token placeholder'
+}
+
+export async function requestChat(request: LLMRequest, provider: Provider) {
+  const config = buildProviderRequest(provider, request)
+
+  const response = await fetch(config.endpoint, {
+    method: 'POST',
+    headers: config.headers,
+    body: JSON.stringify(config.payload),
+  })
+
+  if (!response.ok) {
+    throw new Error(`LLM request failed: ${response.status}`)
+  }
+
+  const raw = (await response.json()) as unknown
+  const parsed = parseProviderResponse(provider, raw)
+
+  return {
+    content: parsed.content,
+    usage: parsed.usage,
+    toolCalls: parsed.toolCalls,
+    model: request.model,
+  }
 }

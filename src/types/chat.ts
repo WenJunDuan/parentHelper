@@ -12,9 +12,22 @@ export interface Conversation {
   mode: 'parent' | 'child'
   kbIds: string[]
   currentAgent?: string
+  childId?: string
+  childName?: string
+  subject?: string
   messageCount: number
   lastMessageAt?: string
   createdAt: string
+}
+
+export interface ConversationMemory {
+  conversationId: string
+  title: string
+  childName?: string
+  subject?: string
+  summary: string
+  archivedAt: string
+  messageCount: number
 }
 
 export interface Message {
@@ -22,6 +35,11 @@ export interface Message {
   conversationId: string
   role: 'user' | 'assistant' | 'system' | 'routing'
   content: string
+  childId?: string
+  childName?: string
+  subject?: string
+  agentName?: string
+  kbName?: string
   agentId?: string
   modelId?: string
   attachments?: Attachment[]

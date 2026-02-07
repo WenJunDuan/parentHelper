@@ -42,6 +42,21 @@ export interface LLMResponse {
   model: string
 }
 
+export interface ProviderRequestConfig {
+  endpoint: string
+  headers: Record<string, string>
+  payload: Record<string, unknown>
+}
+
+export interface ProviderResponseParser {
+  content: string
+  usage: {
+    promptTokens: number
+    completionTokens: number
+  }
+  toolCalls?: ToolCall[]
+}
+
 export interface LLMClient {
   createChat(request: LLMRequest): Promise<LLMResponse>
   createStream(request: LLMRequest): Promise<Response>

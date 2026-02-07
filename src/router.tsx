@@ -5,8 +5,7 @@ import { KBPage } from './components/kb/KBPage'
 import { TaskPage } from './components/task/TaskPage'
 import { AgentPage } from './components/agent/AgentPage'
 import { ModelPage } from './components/model/ModelPage'
-import { SettingsPage } from './components/settings/SettingsPage'
-import { OnboardingWizard } from './components/onboarding/OnboardingWizard'
+import { ChildProfilePage } from './components/child/ChildProfilePage'
 
 export const appRouter = createBrowserRouter([
   {
@@ -19,8 +18,8 @@ export const appRouter = createBrowserRouter([
       { path: '/task', element: <TaskPage /> },
       { path: '/agent', element: <AgentPage /> },
       { path: '/model', element: <ModelPage /> },
-      { path: '/settings', element: <SettingsPage /> },
-      { path: '/onboarding', element: <OnboardingWizard /> },
+      { path: '/child', element: <ChildProfilePage /> },
+      { path: '/onboarding', element: <Navigate to="/child" replace /> },
     ],
   },
 ])

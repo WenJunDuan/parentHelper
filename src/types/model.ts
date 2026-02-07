@@ -9,6 +9,27 @@ export enum ProviderType {
 
 export type ProviderStatus = 'untested' | 'connected' | 'failed'
 
+export type ModelKind = '通用模型' | '嵌入模型'
+
+export interface ManagedModel {
+  id: string
+  name: string
+  kind: ModelKind
+  temperature: number
+  enabled: boolean
+  description: string
+}
+
+export type ProviderModelMap = Record<string, ManagedModel[]>
+
+export type ProviderProtocol =
+  | 'openai-compatible'
+  | 'anthropic-messages'
+  | 'google-genai'
+  | 'custom-http'
+
+export type AuthScheme = 'bearer' | 'x-api-key' | 'custom-header'
+
 export interface Provider {
   id: string
   name: string
@@ -17,7 +38,14 @@ export interface Provider {
   apiKey: string
   enabled: boolean
   status: ProviderStatus
+  protocol?: ProviderProtocol
+  authScheme?: AuthScheme
+  chatPath?: string
+  embeddingPath?: string
+  customHeaderName?: string
   latencyMs?: number
+  generalModel?: string
+  embeddingModel?: string
   createdAt: string
 }
 
