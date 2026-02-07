@@ -1,16 +1,22 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, type KeyboardEvent } from 'react'
 import {
   ArrowUp,
   Compass,
   Minus,
   Plus,
+  Search,
   Send,
   Sparkles,
   Trash2,
+  X,
+  User,
+  BookOpenText,
+  BrainCircuit,
 } from 'lucide-react'
 import { useChatStore } from '../../stores/useChatStore'
 import { useTaskStore } from '../../stores/useTaskStore'
 import {
+  loadDocumentSnapshot,
   loadConversationMemoriesSnapshot,
   loadConversationsSnapshot,
   loadCurrentConversationIdSnapshot,
@@ -24,6 +30,23 @@ import {
 } from '../../services/persistence'
 import { generateHomeworkTask } from '../../services/task/taskGenerator'
 import type { Conversation, ConversationMemory, Message, Task } from '../../types'
+
+type CommandItem = {
+  value: string
+  hint: string
+}
+
+const slashCommands: CommandItem[] = [
+  { value: '作业辅导 Agent', hint: '分步讲解作业并生成练习' },
+  { value: '学习规划 Agent', hint: '按周安排学习节奏与复盘' },
+  { value: '知识问答 Agent', hint: '基于学习资料答疑解惑' },
+]
+
+const defaultKnowledgeFiles: CommandItem[] = [
+  { value: '数学三上-乘法应用题.pdf', hint: '小学数学三年级上册典型题' },
+  { value: '语文三上-阅读理解专项.docx', hint: '阅读理解训练与答题框架' },
+  { value: '英语三上-词汇与句型练习.pdf', hint: '词汇拼写与常见句型' },
+]
 
 function createSessionId() {
   if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
@@ -43,6 +66,29 @@ function createMessageId() {
 
 function normalizeText(value: string) {
   return value.replace(/\s+/g, '').toLowerCase()
+}
+
+function fuzzyMatch(target: string, query: string) {
+  const normalizedQuery = normalizeText(query)
+  if (!normalizedQuery) {
+    return true
+  }
+
+  const normalizedTarget = normalizeText(target)
+  if (normalizedTarget.includes(normalizedQuery)) {
+    return true
+  }
+
+  let cursor = 0
+  for (const char of normalizedQuery) {
+    const index = normalizedTarget.indexOf(char, cursor)
+    if (index === -1) {
+      return false
+    }
+    cursor = index + 1
+  }
+
+  return true
 }
 
 function inferSubject(content: string) {
@@ -160,18 +206,50 @@ export function ChatPage() {
   const [initialized, setInitialized] = useState(false)
   const [sessionsCollapsed, setSessionsCollapsed] = useState(false)
   const [input, setInput] = useState('')
+  const [selectedAgent, setSelectedAgent] = useState<string | null>(null)
+  const [selectedFile, setSelectedFile] = useState<string | null>(null)
+  const [knowledgeFiles, setKnowledgeFiles] = useState<CommandItem[]>(defaultKnowledgeFiles)
+  const [highlightedCommandIndex, setHighlightedCommandIndex] = useState(0)
+
+  const commandPanel = useMemo(() => {
+    if (!input.startsWith('/') && !input.startsWith('@')) {
+      return null
+    }
+
+    const mode = input.startsWith('/') ? 'slash' : 'file'
+    const query = input.slice(1).trim()
+    const source = mode === 'slash' ? slashCommands : knowledgeFiles
+    const items = source.filter(
+      (item) => fuzzyMatch(item.value, query) || fuzzyMatch(item.hint, query),
+    )
+
+    return {
+      mode,
+      query,
+      items,
+    }
+  }, [input, knowledgeFiles])
+
+  const safeHighlightedCommandIndex = useMemo(() => {
+    if (!commandPanel || commandPanel.items.length === 0) {
+      return 0
+    }
+
+    return Math.min(highlightedCommandIndex, Math.max(0, commandPanel.items.length - 1))
+  }, [commandPanel, highlightedCommandIndex])
 
   useEffect(() => {
     let active = true
 
     const initialize = async () => {
-      const [storedConversations, storedMessages, storedCurrentId, storedMemories, storedTasks] =
+      const [storedConversations, storedMessages, storedCurrentId, storedMemories, storedTasks, storedDocuments] =
         await Promise.all([
           loadConversationsSnapshot(),
           loadMessagesSnapshot(),
           loadCurrentConversationIdSnapshot(),
           loadConversationMemoriesSnapshot(),
           loadTaskSnapshot(),
+          loadDocumentSnapshot(),
         ])
 
       if (!active) {
@@ -182,6 +260,12 @@ export function ChatPage() {
       setMessages(storedMessages)
       setArchivedMemories(storedMemories)
       setTasks(storedTasks)
+
+      const fileItems = storedDocuments.map((item) => ({
+        value: item.fileName,
+        hint: `${item.fileType.toUpperCase()} · ${Math.round(item.fileSize / 1024)} KB`,
+      }))
+      setKnowledgeFiles(fileItems.length > 0 ? fileItems : defaultKnowledgeFiles)
 
       if (storedCurrentId && storedConversations.some((item) => item.id === storedCurrentId)) {
         setCurrentConversationId(storedCurrentId)
@@ -296,6 +380,8 @@ export function ChatPage() {
     const inferredSubject = inferSubject(content)
     const inferredChildName = inferChildName(content)
     const inferredUpload = inferUpload(content)
+    const activeAgent = selectedAgent ?? '作业辅导 Agent'
+    const activeKnowledge = selectedFile ?? `${inferredSubject}资料`
 
     const userMessage: Message = {
       id: createMessageId(),
@@ -304,8 +390,8 @@ export function ChatPage() {
       content,
       childName: inferredChildName,
       subject: inferredSubject,
-      agentName: '作业辅导 Agent',
-      kbName: `${inferredSubject}资料`,
+      agentName: activeAgent,
+      kbName: activeKnowledge,
       createdAt: now,
       attachments: inferredUpload
         ? [
@@ -326,8 +412,8 @@ export function ChatPage() {
       content: `明白了，我会按“${inferredChildName} / ${inferredSubject}”这个上下文继续辅导，并自动同步家庭作业。`,
       childName: inferredChildName,
       subject: inferredSubject,
-      agentName: '作业辅导 Agent',
-      kbName: `${inferredSubject}资料`,
+      agentName: activeAgent,
+      kbName: activeKnowledge,
       createdAt: new Date().toISOString(),
     }
 
@@ -338,7 +424,7 @@ export function ChatPage() {
             title: `${inferredChildName} · ${inferredSubject}辅导`,
             childName: inferredChildName,
             subject: inferredSubject,
-            currentAgent: '作业辅导 Agent',
+            currentAgent: activeAgent,
             messageCount: messages.filter((message) => message.conversationId === conversation.id).length + 2,
             lastMessageAt: now,
           }
@@ -361,7 +447,13 @@ export function ChatPage() {
         completedAt: now,
         updatedAt: now,
         originUploadName: inferredUpload,
-        attachmentNames: Array.from(new Set([...(matchedTask.attachmentNames ?? []), inferredUpload])),
+        attachmentNames: Array.from(
+          new Set(
+            [...(matchedTask.attachmentNames ?? []), inferredUpload].filter(
+              (item): item is string => typeof item === 'string' && item.length > 0,
+            ),
+          ),
+        ),
       }
       nextTasks = tasks.map((task) => (task.id === matchedTask.id ? completedTask : task))
       nextAssistantContent = `我已匹配到作业《${matchedTask.title}》，并根据你上传的“${inferredUpload}”标记完成。`
@@ -397,6 +489,62 @@ export function ChatPage() {
     setInput('')
   }
 
+  const handleSelectCommand = (item: CommandItem) => {
+    if (input.startsWith('/')) {
+      setSelectedAgent(item.value)
+      setInput('')
+      return
+    }
+
+    if (input.startsWith('@')) {
+      setSelectedFile(item.value)
+      setInput('')
+      return
+    }
+
+    setInput(item.value)
+  }
+
+  const handleInputKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
+    if (event.nativeEvent.isComposing) {
+      return
+    }
+
+    if (commandPanel) {
+      const { items } = commandPanel
+
+      if (event.key === 'ArrowDown' && items.length > 0) {
+        event.preventDefault()
+        setHighlightedCommandIndex((prev) => (prev + 1) % items.length)
+        return
+      }
+
+      if (event.key === 'ArrowUp' && items.length > 0) {
+        event.preventDefault()
+        setHighlightedCommandIndex((prev) => (prev - 1 + items.length) % items.length)
+        return
+      }
+
+      if (event.key === 'Enter') {
+        event.preventDefault()
+
+        if (items.length > 0) {
+          const target = items[safeHighlightedCommandIndex] ?? items[0]
+          if (target) {
+            handleSelectCommand(target)
+          }
+        }
+
+        return
+      }
+    }
+
+    if (event.key === 'Enter') {
+      event.preventDefault()
+      handleSend()
+    }
+  }
+
   const removeConversation = (conversationId: string) => {
     const target = conversations.find((item) => item.id === conversationId)
     if (!target) {
@@ -420,9 +568,11 @@ export function ChatPage() {
 
   return (
     <section className="page page--chat">
-      <header className="home-header">
+      <header className="home-header chat-page-header">
         <div>
-          <h1 className="page__title">对话</h1>
+          <h1 className="page__title page__title--with-icon">
+            💬 对话
+          </h1>
           <p className="page__desc">
             直接自然语言说需求即可：孩子是谁、哪门学科、要做什么作业，我会自动理解并同步家庭作业。
           </p>
@@ -504,8 +654,15 @@ export function ChatPage() {
         <section className="home-card home-chat">
           <div className="chat-toolbar chat-toolbar--with-bindings">
             <div className="chat-badges">
-              <span className="badge">家长模式</span>
-              <span className="badge">自然语言引导</span>
+              <span className="badge">
+                <User size={12} /> 家长模式
+              </span>
+              <span className="badge">
+                <BookOpenText size={12} /> 学习资料已接入
+              </span>
+              <span className="badge">
+                <BrainCircuit size={12} /> 模型自动路由
+              </span>
             </div>
             <span className="routing-hint">
               <Compass size={14} /> 无需前置选择，直接说需求
@@ -548,13 +705,75 @@ export function ChatPage() {
             )}
           </div>
 
+          {(selectedAgent || selectedFile) && (
+            <div className="chat-floating-tags" aria-label="当前对话上下文">
+              {selectedAgent && (
+                <span className="name-chip name-chip--agent">
+                  {selectedAgent}
+                  <button
+                    className="name-chip__close"
+                    type="button"
+                    onClick={() => setSelectedAgent(null)}
+                    aria-label="移除 Agent"
+                  >
+                    <X size={12} />
+                  </button>
+                </span>
+              )}
+              {selectedFile && (
+                <span className="name-chip name-chip--kb">
+                  {selectedFile}
+                  <button
+                    className="name-chip__close"
+                    type="button"
+                    onClick={() => setSelectedFile(null)}
+                    aria-label="移除文件"
+                  >
+                    <X size={12} />
+                  </button>
+                </span>
+              )}
+            </div>
+          )}
+
           <div className="chat-input-wrap">
             <div className="chat-input-box">
+              {commandPanel && (
+                <div className="command-panel" role="listbox" aria-label="指令联想">
+                  <span className="command-panel__title">
+                    <Search size={12} />
+                    {commandPanel.mode === 'slash' ? 'Agent 指令' : '学习资料文件'}
+                    {commandPanel.query ? (
+                      <span className="command-panel__query">{commandPanel.query}</span>
+                    ) : null}
+                  </span>
+
+                  {commandPanel.items.length > 0 ? (
+                    commandPanel.items.map((item, index) => (
+                      <button
+                        key={item.value}
+                        type="button"
+                        className={`command-item${index === safeHighlightedCommandIndex ? ' command-item--active' : ''}`}
+                        role="option"
+                        aria-selected={index === safeHighlightedCommandIndex}
+                        onClick={() => handleSelectCommand(item)}
+                      >
+                        <span className="command-item__key command-item__key--glow">{item.value}</span>
+                        <span className="command-item__label">{item.hint}</span>
+                      </button>
+                    ))
+                  ) : (
+                    <div className="command-empty">未找到匹配项，继续输入可模糊搜索</div>
+                  )}
+                </div>
+              )}
+
               <input
                 className="chat-input"
                 value={input}
                 onChange={(event) => setInput(event.target.value)}
-                placeholder="直接输入：给小明布置数学选择题；上传math-homework.pdf并标记完成"
+                onKeyDown={handleInputKeyDown}
+                placeholder="直接输入需求，或用 / 选 Agent、@ 选学习资料文件"
               />
             </div>
 
@@ -579,4 +798,3 @@ export function ChatPage() {
     </section>
   )
 }
-

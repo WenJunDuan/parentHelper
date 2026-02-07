@@ -1,10 +1,9 @@
 import { useEffect, useMemo, useState } from 'react'
 import {
   BarChart3,
-  BookOpenText,
-  Bot,
+  CalendarClock,
   CheckCircle2,
-  Clock3,
+  Minus,
   Plus,
   RotateCcw,
   Save,
@@ -60,15 +59,32 @@ const subjectOptions = [
 type ExamDraft = {
   source: 'school' | 'self-test'
   subject: string
+  examName: string
   score: number
   fullScore: number
   examDate: string
   note: string
 }
 
+type BlendedSeriesPoint = {
+  label: string
+  score: number
+  blendedScore: number
+  objectiveScore: number
+  subjectiveScore: number
+  date: string
+  subject: string
+}
+
+type ChartPoint = BlendedSeriesPoint & {
+  x: number
+  y: number
+}
+
 const defaultExamDraft: ExamDraft = {
   source: 'school',
   subject: '数学',
+  examName: '',
   score: 0,
   fullScore: 100,
   examDate: new Date().toISOString().slice(0, 10),
@@ -109,11 +125,18 @@ function createDefaultSubjectiveAssessment(): SubjectiveAssessment {
   }
 }
 
-function createDefaultSubjectScores() {
-  return subjectOptions.reduce<Record<string, number>>((acc, subject) => {
-    acc[subject] = subject === '数学' || subject === '英语' ? 58 : 66
-    return acc
-  }, {})
+function formatChartDate(date: string) {
+  const parsed = new Date(date)
+
+  if (Number.isNaN(parsed.getTime())) {
+    return date
+  }
+
+  return parsed.toLocaleDateString('zh-CN', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  })
 }
 
 function createChildProfile(index: number): ChildProfile {
@@ -121,8 +144,8 @@ function createChildProfile(index: number): ChildProfile {
     id: createChildId(),
     name: `孩子${index}`,
     grade: 3,
-    weakSubjects: ['数学', '英语'],
-    subjectScores: createDefaultSubjectScores(),
+    weakSubjects: [],
+    subjectScores: {},
     examRecords: [],
     subjectiveAssessment: createDefaultSubjectiveAssessment(),
     dailyGoalMinutes: 45,
@@ -146,6 +169,8 @@ function normalizeChildProfile(rawProfile: ChildProfile): ChildProfile {
 
   return {
     ...profile,
+    weakSubjects: Array.isArray(profile.weakSubjects) ? profile.weakSubjects : [],
+    subjectScores: typeof profile.subjectScores === 'object' && profile.subjectScores ? profile.subjectScores : {},
     examRecords: Array.isArray(profile.examRecords) ? profile.examRecords : [],
     subjectiveAssessment: profile.subjectiveAssessment
       ? {
@@ -162,17 +187,7 @@ function normalizeChildProfile(rawProfile: ChildProfile): ChildProfile {
   }
 }
 
-function calculateObjectiveScore(
-  examRecords: ExamRecord[],
-  stats: ChildLearningStats,
-  subjectScores: Record<string, number>,
-) {
-  const subjectValues = Object.values(subjectScores)
-  const subjectAverage =
-    subjectValues.length > 0
-      ? Math.round(subjectValues.reduce((sum, value) => sum + value, 0) / subjectValues.length)
-      : 0
-
+function calculateObjectiveScore(examRecords: ExamRecord[], stats: ChildLearningStats) {
   const examAverage =
     examRecords.length > 0
       ? Math.round(
@@ -181,33 +196,23 @@ function calculateObjectiveScore(
         )
       : stats.avgExamScore
 
-  const totalActivity = stats.practiceQuestionCount + stats.quizCount * 3 + stats.examCount * 8
-  const activityBonus = Math.min(12, Math.round(totalActivity * 0.12))
-
-  return Math.max(
-    0,
-    Math.min(100, Math.round(examAverage * 0.55 + subjectAverage * 0.35 + activityBonus)),
-  )
+  return Math.max(0, Math.min(100, examAverage))
 }
 
 function calculateSubjectiveScore(assessment: SubjectiveAssessment) {
   const dialogueLength = assessment.dialogue.trim().length
   const judgementLength = assessment.aiJudgement.trim().length
   const focusLength = assessment.focusDirection.trim().length
-  const total = dialogueLength * 0.35 + judgementLength * 0.35 + focusLength * 0.3
-  return Math.max(0, Math.min(100, Math.round(total / 3.2)))
+  const total = dialogueLength * 0.5 + judgementLength * 0.25 + focusLength * 0.25
+  return Math.max(0, Math.min(100, Math.round(total / 3.6)))
 }
 
 function calculateComposedAssessment(
-  profile: Pick<ChildProfile, 'examRecords' | 'learningStats' | 'subjectScores' | 'subjectiveAssessment'>,
+  profile: Pick<ChildProfile, 'examRecords' | 'learningStats' | 'subjectiveAssessment'>,
 ): AbilityAssessmentSnapshot {
-  const objectiveScore = calculateObjectiveScore(
-    profile.examRecords,
-    profile.learningStats,
-    profile.subjectScores,
-  )
+  const objectiveScore = calculateObjectiveScore(profile.examRecords, profile.learningStats)
   const subjectiveScore = calculateSubjectiveScore(profile.subjectiveAssessment)
-  const overall = Math.round(objectiveScore * 0.7 + subjectiveScore * 0.3)
+  const overall = Math.round((objectiveScore + subjectiveScore) / 2)
 
   let level: AbilityLevel = '基础'
   if (overall >= 85) {
@@ -235,43 +240,36 @@ function calculateComposedAssessment(
 }
 
 function buildAiJudgement(dialogue: string, objectiveScore: number) {
-  const normalized = dialogue.toLowerCase()
-  const strongSignals = ['主动', '坚持', '稳定', '独立', '高效']
-  const weakSignals = ['拖延', '粗心', '畏难', '焦虑', '分心']
-
-  const positiveCount = strongSignals.filter((token) => normalized.includes(token)).length
-  const negativeCount = weakSignals.filter((token) => normalized.includes(token)).length
-
-  if (!dialogue.trim()) {
-    return '请先补充一段关于孩子学习表现的对话，AI 才能给出判断。'
+  if (dialogue.trim().length < 20) {
+    return '建议补充更完整的学习状态描述（专注度、错题类型、完成作业习惯）以获得更准确判断。'
   }
-
-  if (positiveCount >= negativeCount + 2 && objectiveScore >= 70) {
-    return '主观表现积极且执行稳定，具备持续冲高能力。'
-  }
-
-  if (negativeCount > positiveCount) {
-    return '存在学习习惯波动，建议先稳住执行节奏再提升难度。'
-  }
-
-  return '学习状态中性偏稳，建议以阶段目标驱动持续改进。'
-}
-
-function buildFocusDirection(profile: ChildProfile, objectiveScore: number) {
-  const weakest = Object.entries(profile.subjectScores)
-    .sort((a, b) => a[1] - b[1])
-    .slice(0, 2)
-    .map(([subject]) => subject)
 
   if (objectiveScore >= 80) {
-    return `当前基础较稳，下一阶段建议强化${weakest.join('、')}的综合应用与跨题型迁移。`
+    return '孩子学习基础较稳，注意在高阶题与综合题上提升思考深度。'
   }
 
   if (objectiveScore >= 60) {
-    return `建议围绕${weakest.join('、')}做“基础巩固 + 每周小测”双线推进。`
+    return '当前处于稳步提升阶段，建议继续夯实基础并加强错题复盘频率。'
   }
 
-  return `建议优先提升${weakest.join('、')}基础正确率，并固定每日 20 分钟错题复盘。`
+  return '基础能力波动较大，建议先缩小学习范围，分模块补齐核心知识点。'
+}
+
+function buildFocusDirection(profile: ChildProfile, objectiveScore: number) {
+  const weakest = [...profile.examRecords]
+    .sort((a, b) => (a.score / Math.max(1, a.fullScore)) * 100 - (b.score / Math.max(1, b.fullScore)) * 100)
+    .slice(0, 2)
+    .map((item) => item.subject)
+
+  if (objectiveScore >= 80) {
+    return `当前基础较稳，下一阶段建议强化${weakest.join('、') || '核心学科'}的综合应用与跨题型迁移。`
+  }
+
+  if (objectiveScore >= 60) {
+    return `建议围绕${weakest.join('、') || '核心学科'}做“基础巩固 + 每周小测”双线推进。`
+  }
+
+  return `建议优先提升${weakest.join('、') || '核心学科'}基础正确率，并固定每日 20 分钟错题复盘。`
 }
 
 function copyProfile(profile: ChildProfile): ChildProfile {
@@ -302,6 +300,8 @@ export function ChildProfilePage() {
   const [draft, setDraft] = useState<ChildProfile | null>(null)
   const [savedAt, setSavedAt] = useState<string | null>(null)
   const [examDraft, setExamDraft] = useState<ExamDraft>(defaultExamDraft)
+  const [historyCollapsed, setHistoryCollapsed] = useState(true)
+  const [hoveredPointIndex, setHoveredPointIndex] = useState<number | null>(null)
 
   useEffect(() => {
     let active = true
@@ -384,39 +384,14 @@ export function ChildProfilePage() {
     if (draft.grade > 0) {
       done += 1
     }
-    if (draft.subjectiveAssessment.dialogue.trim()) {
+    if ((draft.parentNotes ?? '').trim()) {
       done += 1
     }
     if (draft.examRecords.length > 0) {
       done += 1
     }
-    if ((draft.dailyGoalMinutes ?? 0) > 0) {
-      done += 1
-    }
 
-    return Math.round((done / 5) * 100)
-  }, [draft])
-
-  const topSubjects = useMemo(() => {
-    if (!draft) {
-      return []
-    }
-
-    return Object.entries(draft.subjectScores)
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 2)
-      .map(([name]) => name)
-  }, [draft])
-
-  const weakSubjects = useMemo(() => {
-    if (!draft) {
-      return []
-    }
-
-    return Object.entries(draft.subjectScores)
-      .sort((a, b) => a[1] - b[1])
-      .slice(0, 2)
-      .map(([name]) => name)
+    return Math.round((done / 4) * 100)
   }, [draft])
 
   const objectiveScore = useMemo(() => {
@@ -424,16 +399,125 @@ export function ChildProfilePage() {
       return 0
     }
 
-    return calculateObjectiveScore(draft.examRecords, draft.learningStats, draft.subjectScores)
+    return calculateObjectiveScore(draft.examRecords, draft.learningStats)
   }, [draft])
+
+  const subjectiveDialogue = useMemo(() => {
+    if (!draft) {
+      return ''
+    }
+
+    return (draft.parentNotes ?? '').trim() || draft.subjectiveAssessment.dialogue
+  }, [draft])
+
+  const aiJudgementText = useMemo(() => {
+    return buildAiJudgement(subjectiveDialogue, objectiveScore)
+  }, [objectiveScore, subjectiveDialogue])
+
+  const focusDirectionText = useMemo(() => {
+    if (!draft) {
+      return '建议先补充考试记录后再生成学习侧重点。'
+    }
+
+    return buildFocusDirection(draft, objectiveScore)
+  }, [draft, objectiveScore])
 
   const subjectiveScore = useMemo(() => {
     if (!draft) {
       return 0
     }
 
-    return calculateSubjectiveScore(draft.subjectiveAssessment)
-  }, [draft])
+    return calculateSubjectiveScore({
+      ...draft.subjectiveAssessment,
+      dialogue: subjectiveDialogue,
+      aiJudgement: aiJudgementText,
+      focusDirection: focusDirectionText,
+    })
+  }, [aiJudgementText, draft, focusDirectionText, subjectiveDialogue])
+
+  const blendedSeries = useMemo<BlendedSeriesPoint[]>(() => {
+    if (!draft) {
+      return []
+    }
+
+    const objectiveBase = objectiveScore
+    const subjectiveBase = subjectiveScore
+
+    if (draft.examRecords.length === 0) {
+      return [
+        {
+          label: '当前',
+          score: Math.round((objectiveBase + subjectiveBase) / 2),
+          blendedScore: Math.round((objectiveBase + subjectiveBase) / 2),
+          objectiveScore: objectiveBase,
+          subjectiveScore: subjectiveBase,
+          date: new Date().toISOString(),
+          subject: '综合',
+        },
+      ]
+    }
+
+    return [...draft.examRecords]
+      .sort((a, b) => a.examDate.localeCompare(b.examDate))
+      .map((record, index) => {
+        const objectiveAtPoint = Math.round((record.score / Math.max(1, record.fullScore)) * 100)
+        const blended = Math.round((objectiveAtPoint + subjectiveBase) / 2)
+        return {
+          label: `${index + 1}`,
+          score: blended,
+          blendedScore: blended,
+          objectiveScore: objectiveAtPoint,
+          subjectiveScore: subjectiveBase,
+          date: record.examDate,
+          subject: record.subject,
+        }
+      })
+  }, [draft, objectiveScore, subjectiveScore])
+
+  const chartSeries = useMemo<ChartPoint[]>(() => {
+    if (blendedSeries.length === 0) {
+      return []
+    }
+
+    const width = 420
+    const height = 140
+    const paddingX = 18
+    const paddingY = 18
+    const usableWidth = width - paddingX * 2
+    const usableHeight = height - paddingY * 2
+
+    return blendedSeries.map((item, index) => {
+      const x =
+        blendedSeries.length === 1 ? width / 2 : paddingX + (usableWidth / (blendedSeries.length - 1)) * index
+      const y = paddingY + ((100 - item.score) / 100) * usableHeight
+
+      return {
+        ...item,
+        x,
+        y,
+      }
+    })
+  }, [blendedSeries])
+
+  const chartPoints = useMemo(() => {
+    if (chartSeries.length === 0) {
+      return ''
+    }
+
+    return chartSeries.map((item) => `${item.x},${item.y}`).join(' ')
+  }, [chartSeries])
+
+  useEffect(() => {
+    if (hoveredPointIndex === null) {
+      return
+    }
+
+    if (hoveredPointIndex >= chartSeries.length) {
+      setHoveredPointIndex(null)
+    }
+  }, [chartSeries.length, hoveredPointIndex])
+
+  const hoveredPoint = hoveredPointIndex === null ? null : chartSeries[hoveredPointIndex] ?? null
 
   const handleAddChild = () => {
     const next = createChildProfile(childProfiles.length + 1)
@@ -455,9 +539,23 @@ export function ChildProfilePage() {
       return
     }
 
-    const composed = calculateComposedAssessment(draft)
+    const subjectiveAssessment: SubjectiveAssessment = {
+      ...draft.subjectiveAssessment,
+      dialogue: subjectiveDialogue,
+      aiJudgement: aiJudgementText,
+      focusDirection: focusDirectionText,
+      updatedAt: new Date().toISOString(),
+    }
+
+    const composed = calculateComposedAssessment({
+      examRecords: draft.examRecords,
+      learningStats: draft.learningStats,
+      subjectiveAssessment,
+    })
+
     upsertChildProfile({
       ...draft,
+      subjectiveAssessment,
       assessment: composed,
     })
     setSavedAt(new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' }))
@@ -470,38 +568,6 @@ export function ChildProfilePage() {
 
     setDraft(copyProfile(activeProfile))
     setExamDraft(defaultExamDraft)
-  }
-
-  const handleGenerateAiAssessment = () => {
-    if (!draft) {
-      return
-    }
-
-    const aiJudgement = buildAiJudgement(draft.subjectiveAssessment.dialogue, objectiveScore)
-    const focusDirection = buildFocusDirection(draft, objectiveScore)
-
-    setDraft((prev) =>
-      prev
-        ? {
-            ...prev,
-            subjectiveAssessment: {
-              ...prev.subjectiveAssessment,
-              aiJudgement,
-              focusDirection,
-              updatedAt: new Date().toISOString(),
-            },
-            assessment: calculateComposedAssessment({
-              ...prev,
-              subjectiveAssessment: {
-                ...prev.subjectiveAssessment,
-                aiJudgement,
-                focusDirection,
-                updatedAt: new Date().toISOString(),
-              },
-            }),
-          }
-        : prev,
-    )
   }
 
   const handleAddExamRecord = () => {
@@ -519,7 +585,10 @@ export function ChildProfilePage() {
       score,
       fullScore,
       examDate: examDraft.examDate,
-      note: examDraft.note.trim() || undefined,
+      note:
+        [examDraft.examName.trim(), examDraft.note.trim()]
+          .filter((item) => item.length > 0)
+          .join(' ｜ ') || undefined,
     }
 
     const nextExamRecords = [nextRecord, ...draft.examRecords]
@@ -527,10 +596,8 @@ export function ChildProfilePage() {
       ...draft.learningStats,
       examCount: nextExamRecords.length,
       avgExamScore: Math.round(
-        nextExamRecords.reduce(
-          (sum, item) => sum + (item.score / Math.max(1, item.fullScore)) * 100,
-          0,
-        ) / nextExamRecords.length,
+        nextExamRecords.reduce((sum, item) => sum + (item.score / Math.max(1, item.fullScore)) * 100, 0) /
+          nextExamRecords.length,
       ),
     }
 
@@ -539,9 +606,9 @@ export function ChildProfilePage() {
       examRecords: nextExamRecords,
       learningStats: nextStats,
       assessment: calculateComposedAssessment({
-        ...draft,
         examRecords: nextExamRecords,
         learningStats: nextStats,
+        subjectiveAssessment: draft.subjectiveAssessment,
       }),
     })
 
@@ -560,10 +627,8 @@ export function ChildProfilePage() {
       avgExamScore:
         nextExamRecords.length > 0
           ? Math.round(
-              nextExamRecords.reduce(
-                (sum, item) => sum + (item.score / Math.max(1, item.fullScore)) * 100,
-                0,
-              ) / nextExamRecords.length,
+              nextExamRecords.reduce((sum, item) => sum + (item.score / Math.max(1, item.fullScore)) * 100, 0) /
+                nextExamRecords.length,
             )
           : 0,
     }
@@ -573,9 +638,9 @@ export function ChildProfilePage() {
       examRecords: nextExamRecords,
       learningStats: nextStats,
       assessment: calculateComposedAssessment({
-        ...draft,
         examRecords: nextExamRecords,
         learningStats: nextStats,
+        subjectiveAssessment: draft.subjectiveAssessment,
       }),
     })
   }
@@ -600,9 +665,7 @@ export function ChildProfilePage() {
             <UserRound size={20} />
             学习档案
           </h1>
-          <p className="page__desc">
-            合并主观能力画像与客观成绩记录：AI 判断学习状态并给出下阶段学习侧重点。
-          </p>
+          <p className="page__desc">左侧维护基础档案与考试成绩，右侧展示 AI 评估、历史评价成绩与学习侧重点建议。</p>
         </div>
       </header>
 
@@ -644,7 +707,7 @@ export function ChildProfilePage() {
       <div className="child-layout child-layout--tabs">
         <article className="child-card child-card--editor">
           <div className="child-card__title">
-            <BookOpenText size={18} /> 基础学习画像
+            <UserRound size={18} /> 学生基础信息
           </div>
 
           <div className="field-row">
@@ -677,22 +740,6 @@ export function ChildProfilePage() {
           </div>
 
           <label className="field">
-            <span className="field__label">每日学习目标（分钟）</span>
-            <input
-              className="field__input"
-              type="number"
-              min={10}
-              max={240}
-              value={draft.dailyGoalMinutes ?? 0}
-              onChange={(event) =>
-                setDraft((prev) =>
-                  prev ? { ...prev, dailyGoalMinutes: Number(event.target.value) || undefined } : prev,
-                )
-              }
-            />
-          </label>
-
-          <label className="field">
             <span className="field__label">家长备注</span>
             <textarea
               className="field__input child-textarea"
@@ -700,55 +747,12 @@ export function ChildProfilePage() {
               onChange={(event) =>
                 setDraft((prev) => (prev ? { ...prev, parentNotes: event.target.value } : prev))
               }
-              placeholder="记录学习习惯、近期状态、注意事项"
+              placeholder="记录孩子学习习惯、近期状态与注意事项"
             />
           </label>
 
           <div className="child-card__title">
-            <BarChart3 size={18} /> 主观能力画像（AI 判断）
-          </div>
-
-          <label className="field">
-            <span className="field__label">学习情况对话（主观输入）</span>
-            <textarea
-              className="field__input child-textarea"
-              value={draft.subjectiveAssessment.dialogue}
-              onChange={(event) =>
-                setDraft((prev) =>
-                  prev
-                    ? {
-                        ...prev,
-                        subjectiveAssessment: {
-                          ...prev.subjectiveAssessment,
-                          dialogue: event.target.value,
-                        },
-                      }
-                    : prev,
-                )
-              }
-              placeholder="例如：最近数学计算正确率提升，但语文阅读理解容易走神..."
-            />
-          </label>
-
-          <div className="child-actions-inline">
-            <button className="home-btn" type="button" onClick={handleGenerateAiAssessment}>
-              <Bot size={16} /> AI 生成判断
-            </button>
-          </div>
-
-          <div className="child-insight-grid">
-            <div className="child-insight-card">
-              <span>AI 能力判断</span>
-              <strong>{draft.subjectiveAssessment.aiJudgement}</strong>
-            </div>
-            <div className="child-insight-card">
-              <span>下阶段学习侧重点</span>
-              <strong>{draft.subjectiveAssessment.focusDirection}</strong>
-            </div>
-          </div>
-
-          <div className="child-card__title">
-            <Clock3 size={18} /> 客观评分记录
+            <CalendarClock size={18} /> 客观考试录入
           </div>
 
           <div className="field-row">
@@ -787,6 +791,28 @@ export function ChildProfilePage() {
 
           <div className="field-row">
             <label className="field">
+              <span className="field__label">考试名称</span>
+              <input
+                className="field__input"
+                value={examDraft.examName}
+                onChange={(event) => setExamDraft((prev) => ({ ...prev, examName: event.target.value }))}
+                placeholder="例如：期中考试 / 第三次单元测"
+              />
+            </label>
+
+            <label className="field">
+              <span className="field__label">考试时间</span>
+              <input
+                className="field__input"
+                type="date"
+                value={examDraft.examDate}
+                onChange={(event) => setExamDraft((prev) => ({ ...prev, examDate: event.target.value }))}
+              />
+            </label>
+          </div>
+
+          <div className="field-row">
+            <label className="field">
               <span className="field__label">得分</span>
               <input
                 className="field__input"
@@ -811,25 +837,15 @@ export function ChildProfilePage() {
                 }
               />
             </label>
-
-            <label className="field">
-              <span className="field__label">日期</span>
-              <input
-                className="field__input"
-                type="date"
-                value={examDraft.examDate}
-                onChange={(event) => setExamDraft((prev) => ({ ...prev, examDate: event.target.value }))}
-              />
-            </label>
           </div>
 
           <label className="field">
-            <span className="field__label">备注</span>
+            <span className="field__label">补充说明（可选）</span>
             <input
               className="field__input"
               value={examDraft.note}
               onChange={(event) => setExamDraft((prev) => ({ ...prev, note: event.target.value }))}
-              placeholder="例如：期中考试 / 周末自测"
+              placeholder="例如：粗心失分较多 / 完成速度偏慢"
             />
           </label>
 
@@ -837,31 +853,38 @@ export function ChildProfilePage() {
             <Plus size={16} /> 录入成绩
           </button>
 
-          <div className="task-list">
-            {draft.examRecords.map((record) => (
-              <div key={record.id} className="task-row">
-                <span className="task-toggle">{record.source === 'school' ? '学校' : '自测'}</span>
-                <div className="task-row__main">
-                  <strong>
-                    {record.subject} · {record.score}/{record.fullScore}
-                  </strong>
-                  <span>{record.examDate}</span>
-                  {record.note && <p>{record.note}</p>}
-                </div>
-                <button
-                  className="model-icon-btn model-icon-btn--danger"
-                  type="button"
-                  onClick={() => handleRemoveExamRecord(record.id)}
-                >
-                  <Trash2 size={14} />
-                </button>
-              </div>
-            ))}
-
-            {draft.examRecords.length === 0 && (
-              <div className="model-empty">暂无成绩记录，请先录入学校考试或自测分数。</div>
-            )}
+          <div className="child-actions-inline">
+            <button className="home-btn" type="button" onClick={() => setHistoryCollapsed((value) => !value)}>
+              {historyCollapsed ? <Plus size={16} /> : <Minus size={16} />}
+              {historyCollapsed ? '展开历史成绩' : '收起历史成绩'}
+            </button>
           </div>
+
+          {!historyCollapsed && (
+            <div className="task-list">
+              {draft.examRecords.map((record) => (
+                <div key={record.id} className="task-row">
+                  <span className="task-toggle">{record.source === 'school' ? '学校' : '自测'}</span>
+                  <div className="task-row__main">
+                    <strong>
+                      {record.subject} · {record.score}/{record.fullScore}
+                    </strong>
+                    <span>{record.examDate}</span>
+                    {record.note && <p>{record.note}</p>}
+                  </div>
+                  <button
+                    className="model-icon-btn model-icon-btn--danger"
+                    type="button"
+                    onClick={() => handleRemoveExamRecord(record.id)}
+                  >
+                    <Trash2 size={14} />
+                  </button>
+                </div>
+              ))}
+
+              {draft.examRecords.length === 0 && <div className="model-empty">暂无历史考试记录。</div>}
+            </div>
+          )}
 
           <div className="child-actions">
             <button className="home-btn" type="button" onClick={handleReset}>
@@ -881,7 +904,7 @@ export function ChildProfilePage() {
 
         <article className="child-card child-card--assessment">
           <div className="child-card__title">
-            <BarChart3 size={18} /> 综合能力评估（主观 + 客观）
+            <BarChart3 size={18} /> 平均成绩与 AI 评估分析
           </div>
 
           <div className="child-progress">
@@ -911,25 +934,102 @@ export function ChildProfilePage() {
             </div>
 
             <p>{draft.assessment?.summary ?? '暂无评估结论'}</p>
+
+            <div className="child-insight-card">
+              <span>AI 评估分析</span>
+              <strong>{aiJudgementText}</strong>
+            </div>
+
+            <div className="child-insight-card">
+              <span>学习侧重点建议</span>
+              <strong>{focusDirectionText}</strong>
+            </div>
           </div>
 
           <div className="child-insight-grid">
             <div className="child-insight-card">
-              <span>客观评分</span>
-              <strong>{objectiveScore}</strong>
-            </div>
-            <div className="child-insight-card">
-              <span>主观画像评分</span>
+              <span>历史评价成绩</span>
               <strong>{subjectiveScore}</strong>
             </div>
             <div className="child-insight-card">
-              <span>优势学科</span>
-              <strong>{topSubjects.join('、') || '暂无'}</strong>
+              <span>客观平均成绩</span>
+              <strong>{objectiveScore}</strong>
             </div>
             <div className="child-insight-card">
-              <span>待提升学科</span>
-              <strong>{weakSubjects.join('、') || '暂无'}</strong>
+              <span>主客观平均</span>
+              <strong>{Math.round((objectiveScore + subjectiveScore) / 2)}</strong>
             </div>
+          </div>
+
+          <div className="child-line-chart">
+            <div className="child-line-chart__title">历史评价成绩趋势</div>
+            {chartPoints ? (
+              <svg viewBox="0 0 420 140" role="img" aria-label="主客观平均成绩折线图">
+                <line x1="18" y1="122" x2="402" y2="122" className="chart-axis" />
+                <line x1="18" y1="18" x2="18" y2="122" className="chart-axis" />
+                <polyline points={chartPoints} className="chart-line" />
+                {chartSeries.map((item, index) => (
+                  <g
+                    key={`${item.label}-${item.date}`}
+                    onMouseEnter={() => setHoveredPointIndex(index)}
+                    onMouseLeave={() => setHoveredPointIndex(null)}
+                  >
+                    <circle
+                      cx={item.x}
+                      cy={item.y}
+                      r={hoveredPointIndex === index ? 5 : 3.8}
+                      className={`chart-dot${hoveredPointIndex === index ? ' chart-dot--active' : ''}`}
+                    />
+                    <text x={item.x} y={136} className="chart-label">
+                      {item.label}
+                    </text>
+                  </g>
+                ))}
+
+                {hoveredPoint && (
+                  <g className="chart-tooltip" pointerEvents="none">
+                    <rect
+                      x={Math.max(20, Math.min(252, hoveredPoint.x - 84))}
+                      y={Math.max(12, hoveredPoint.y - 70)}
+                      width="168"
+                      height="64"
+                      rx="8"
+                      className="chart-tooltip__box"
+                    />
+                    <text
+                      x={Math.max(30, Math.min(262, hoveredPoint.x - 74))}
+                      y={Math.max(28, hoveredPoint.y - 54)}
+                      className="chart-tooltip__title"
+                    >
+                      {hoveredPoint.subject}
+                    </text>
+                    <text
+                      x={Math.max(30, Math.min(262, hoveredPoint.x - 74))}
+                      y={Math.max(42, hoveredPoint.y - 40)}
+                      className="chart-tooltip__text"
+                    >
+                      日期：{formatChartDate(hoveredPoint.date)}
+                    </text>
+                    <text
+                      x={Math.max(30, Math.min(262, hoveredPoint.x - 74))}
+                      y={Math.max(54, hoveredPoint.y - 28)}
+                      className="chart-tooltip__text"
+                    >
+                      客观：{hoveredPoint.objectiveScore} 主观：{hoveredPoint.subjectiveScore}
+                    </text>
+                    <text
+                      x={Math.max(30, Math.min(262, hoveredPoint.x - 74))}
+                      y={Math.max(66, hoveredPoint.y - 16)}
+                      className="chart-tooltip__text chart-tooltip__text--strong"
+                    >
+                      平均：{hoveredPoint.blendedScore}
+                    </text>
+                  </g>
+                )}
+              </svg>
+            ) : (
+              <div className="model-empty">暂无可绘制数据</div>
+            )}
           </div>
         </article>
       </div>

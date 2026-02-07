@@ -1,42 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
-import {
-  CalendarClock,
-  Download,
-  Eye,
-  FileQuestion,
-  ListTodo,
-  Plus,
-  Save,
-  Trash2,
-} from 'lucide-react'
+import { CalendarClock, Download, ListTodo, X } from 'lucide-react'
 import { useTaskStore } from '../../stores/useTaskStore'
 import { loadTaskSnapshot, saveTaskSnapshot } from '../../services/persistence'
-import { generateHomeworkTask } from '../../services/task/taskGenerator'
 import type { Task } from '../../types'
-
-type TaskDraft = {
-  title: string
-  childName: string
-  subject: string
-  description: string
-  mode: '问答题' | '判断题' | '选择题' | '多选题' | '简答题' | '练字题' | '背诵检查'
-}
-
-const defaultDraft: TaskDraft = {
-  title: '',
-  childName: '',
-  subject: '数学',
-  description: '',
-  mode: '问答题',
-}
-
-function createTaskId() {
-  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
-    return `task-${crypto.randomUUID()}`
-  }
-
-  return `task-${Date.now()}`
-}
 
 function downloadAsPdf(task: Task) {
   const content = [
@@ -58,61 +24,78 @@ function downloadAsPdf(task: Task) {
   URL.revokeObjectURL(url)
 }
 
-function onlineStatusText(task: Task) {
+function taskTypeLabel(taskType?: Task['taskType']) {
+  if (!taskType || taskType === 'qa') {
+    return '问答题'
+  }
+  if (taskType === 'true-false') {
+    return '判断题'
+  }
+  if (taskType === 'single-choice') {
+    return '选择题'
+  }
+  if (taskType === 'multi-choice') {
+    return '多选题'
+  }
+  if (taskType === 'short-answer') {
+    return '简答题'
+  }
+  if (taskType === 'handwriting') {
+    return '练字题'
+  }
+  if (taskType === 'recitation') {
+    return '背诵检查'
+  }
+  return '问答题'
+}
+
+function dueLabel(task: Task) {
+  if (!task.dueDate) {
+    return '未设置截止时间'
+  }
+
+  const due = new Date(task.dueDate)
+  const now = new Date()
+  const dayDiff = Math.floor((due.getTime() - now.getTime()) / (24 * 3600 * 1000))
+
+  if (dayDiff < 0) {
+    return `截止：${Math.abs(dayDiff)} 天前`
+  }
+  if (dayDiff === 0) {
+    return '截止：今天'
+  }
+  if (dayDiff === 1) {
+    return '截止：明天'
+  }
+
+  return `截止：${due.toLocaleDateString('zh-CN')}`
+}
+
+function statusColorClass(task: Task) {
   if (task.status === 'done') {
-    return '已完成'
+    return 'task-board-card--done'
   }
 
   if (task.status === 'in_progress') {
-    return '作答中'
+    return 'task-board-card--progress'
   }
 
-  return '待开始'
+  const due = task.dueDate ? new Date(task.dueDate).getTime() : 0
+  if (due > 0 && due < Date.now()) {
+    return 'task-board-card--overdue'
+  }
+
+  return 'task-board-card--todo'
+}
+
+function sourceLabel(source: Task['source']) {
+  return source === 'ai' ? '🤖 AI生成' : '✍️ 手动'
 }
 
 export function TaskPage() {
-  const { tasks, setTasks, upsertTask, removeTask } = useTaskStore()
+  const { tasks, setTasks } = useTaskStore()
   const [initialized, setInitialized] = useState(false)
-  const [draft, setDraft] = useState<TaskDraft>(defaultDraft)
-  const [activeTaskId, setActiveTaskId] = useState<string | null>(null)
-  const [onlineAnswer, setOnlineAnswer] = useState('')
-
-  const activeTask = useMemo(
-    () => tasks.find((item) => item.id === activeTaskId) ?? null,
-    [activeTaskId, tasks],
-  )
-
-  const activeTaskTypeLabel = useMemo(() => {
-    if (!activeTask?.taskType) {
-      return '问答题'
-    }
-
-    if (activeTask.taskType === 'true-false') {
-      return '判断题'
-    }
-
-    if (activeTask.taskType === 'single-choice') {
-      return '选择题'
-    }
-
-    if (activeTask.taskType === 'multi-choice') {
-      return '多选题'
-    }
-
-    if (activeTask.taskType === 'short-answer') {
-      return '简答题'
-    }
-
-    if (activeTask.taskType === 'handwriting') {
-      return '练字题'
-    }
-
-    if (activeTask.taskType === 'recitation') {
-      return '背诵检查'
-    }
-
-    return '问答题'
-  }, [activeTask])
+  const [detailTask, setDetailTask] = useState<Task | null>(null)
 
   useEffect(() => {
     let active = true
@@ -142,234 +125,168 @@ export function TaskPage() {
     void saveTaskSnapshot(tasks)
   }, [initialized, tasks])
 
-  const grouped = useMemo(() => {
+  const taskColumns = useMemo(() => {
     const todo = tasks.filter((item) => item.status === 'todo')
     const inProgress = tasks.filter((item) => item.status === 'in_progress')
     const done = tasks.filter((item) => item.status === 'done')
 
-    return {
-      todo,
-      inProgress,
-      done,
-    }
+    return { todo, inProgress, done }
   }, [tasks])
 
-  const handleSave = () => {
-    const title = draft.title.trim()
-    if (!title) {
+  useEffect(() => {
+    if (!detailTask) {
       return
     }
 
-    const nextTask = generateHomeworkTask({
-      title,
-      childName: draft.childName.trim() || undefined,
-      subject: draft.subject,
-      description: draft.description.trim(),
-      mode: draft.mode,
-      source: 'manual',
-    })
-
-    upsertTask(nextTask)
-    setDraft(defaultDraft)
-  }
-
-  const handleStartOnline = (task: Task) => {
-    const nextStatus = task.status === 'done' ? 'done' : 'in_progress'
-    upsertTask({
-      ...task,
-      status: nextStatus,
-      updatedAt: new Date().toISOString(),
-    })
-    setActiveTaskId(task.id)
-    setOnlineAnswer(task.answerText ?? '')
-  }
-
-  const handleSubmitOnline = () => {
-    if (!activeTask) {
-      return
+    const onKeydown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setDetailTask(null)
+      }
     }
 
-    upsertTask({
-      ...activeTask,
-      answerText: onlineAnswer,
-      status: 'done',
-      completedAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    })
-  }
-
-  const handleCreateQuickQuestion = () => {
-    const now = new Date().toISOString()
-    const task: Task = {
-      id: createTaskId(),
-      title: `${draft.subject}快速练习`,
-      subject: draft.subject,
-      childName: draft.childName.trim() || undefined,
-      taskType: 'qa',
-      question: `请完成${draft.subject}今日快速问答并写出解题过程。`,
-      status: 'todo',
-      priority: 'medium',
-      source: 'manual',
-      createdAt: now,
-      updatedAt: now,
+    window.addEventListener('keydown', onKeydown)
+    return () => {
+      window.removeEventListener('keydown', onKeydown)
     }
-
-    upsertTask(task)
-  }
+  }, [detailTask])
 
   return (
-    <section className="page">
-      <h1 className="page__title page__title--with-icon">
-        <ListTodo size={20} />
-        家庭作业
-      </h1>
-      <p className="page__desc">支持在线做题、PDF 导出与多题型生成，并与对话区自动同步状态。</p>
+    <section className="page task-page-design">
+      <header className="home-header">
+        <div>
+          <h1 className="page__title page__title--with-icon">
+            <ListTodo size={20} /> 家庭作业
+          </h1>
+          <p className="page__desc">作业由 Bot 对话自动生成，这里只做查看、状态追踪与导出。</p>
+        </div>
+        <span className="badge">
+          <CalendarClock size={14} /> 今日待办 {taskColumns.todo.length}
+        </span>
+      </header>
 
-      <div className="task-layout">
-        <article className="feature-card task-editor-card">
-          <div className="feature-card__title">
-            <Plus size={16} /> 生成家庭作业
-          </div>
+      <div className="task-board">
+        <article className="task-board-column">
+          <header className="task-board-column__head">
+            <span>📋 待办</span>
+            <span className="session-count">{taskColumns.todo.length}</span>
+          </header>
 
-          <label className="field">
-            <span className="field__label">作业标题</span>
-            <input
-              className="field__input"
-              value={draft.title}
-              onChange={(event) => setDraft((prev) => ({ ...prev, title: event.target.value }))}
-              placeholder="例如：数学口算训练"
-            />
-          </label>
-
-          <div className="field-row">
-            <label className="field">
-              <span className="field__label">孩子姓名</span>
-              <input
-                className="field__input"
-                value={draft.childName}
-                onChange={(event) => setDraft((prev) => ({ ...prev, childName: event.target.value }))}
-                placeholder="可选"
-              />
-            </label>
-
-            <label className="field">
-              <span className="field__label">学科</span>
-              <input
-                className="field__input"
-                value={draft.subject}
-                onChange={(event) => setDraft((prev) => ({ ...prev, subject: event.target.value }))}
-              />
-            </label>
-          </div>
-
-          <div className="field-row">
-            <label className="field">
-              <span className="field__label">作业模式</span>
-              <select
-                className="field__input"
-                value={draft.mode}
-                onChange={(event) =>
-                  setDraft((prev) => ({ ...prev, mode: event.target.value as TaskDraft['mode'] }))
-                }
+          <div className="task-board-list">
+            {taskColumns.todo.map((task) => (
+              <button
+                key={task.id}
+                className={`task-board-card ${statusColorClass(task)}`}
+                type="button"
+                onClick={() => setDetailTask(task)}
               >
-                <option value="问答题">问答题</option>
-                <option value="判断题">判断题</option>
-                <option value="选择题">选择题</option>
-                <option value="多选题">多选题</option>
-                <option value="简答题">简答题</option>
-                <option value="练字题">练字题</option>
-                <option value="背诵检查">背诵检查</option>
-              </select>
-            </label>
-
-            <label className="field">
-              <span className="field__label">快捷题目</span>
-              <button className="home-btn" type="button" onClick={handleCreateQuickQuestion}>
-                <FileQuestion size={16} /> 一键生成
+                <strong>{task.title}</strong>
+                <div className="task-board-card__meta">
+                  <span className="model-kind-pill">{task.subject || '综合'}</span>
+                  <span className="model-kind-pill">{taskTypeLabel(task.taskType)}</span>
+                </div>
+                <p>{task.question || task.description || '暂无内容'}</p>
+                <div className="task-board-card__foot">
+                  <span>{dueLabel(task)}</span>
+                  <span className="task-board-source">{sourceLabel(task.source)}</span>
+                </div>
               </button>
-            </label>
-          </div>
+            ))}
 
-          <label className="field">
-            <span className="field__label">说明</span>
-            <textarea
-              className="field__input child-textarea"
-              value={draft.description}
-              onChange={(event) => setDraft((prev) => ({ ...prev, description: event.target.value }))}
-              placeholder="作业要求与完成标准"
-            />
-          </label>
-
-          <div className="model-editor-actions model-editor-actions--compact">
-            <button className="home-btn home-btn--primary" type="button" onClick={handleSave}>
-              <Save size={16} /> 保存作业
-            </button>
+            {taskColumns.todo.length === 0 && <div className="model-empty">暂无待办作业</div>}
           </div>
         </article>
 
-        <article className="feature-card task-list-card">
-          <div className="feature-card__title">
-            <CalendarClock size={16} /> 作业列表（待完成 {grouped.todo.length} / 作答中 {grouped.inProgress.length}）
-          </div>
+        <article className="task-board-column">
+          <header className="task-board-column__head">
+            <span>🔄 进行中</span>
+            <span className="session-count">{taskColumns.inProgress.length}</span>
+          </header>
 
-          <div className="task-list">
-            {tasks.map((task) => (
-              <div key={task.id} className={`task-row${task.status === 'done' ? ' task-row--done' : ''}`}>
-                <button className="task-toggle" type="button" onClick={() => handleStartOnline(task)}>
-                  {onlineStatusText(task)}
-                </button>
-                <div className="task-row__main">
-                  <strong>{task.title}</strong>
-                  <span>
-                    {(task.childName || '未绑定孩子')} · {task.subject || '综合'} ·
-                    {task.source === 'ai' ? ' 来自对话' : ' 手动布置'} ·
-                    {task.taskType || 'qa'}
-                  </span>
-                  <p>{task.question || task.description || '暂无题目描述'}</p>
+          <div className="task-board-list">
+            {taskColumns.inProgress.map((task) => (
+              <button
+                key={task.id}
+                className={`task-board-card ${statusColorClass(task)}`}
+                type="button"
+                onClick={() => setDetailTask(task)}
+              >
+                <strong>{task.title}</strong>
+                <div className="task-board-card__meta">
+                  <span className="model-kind-pill">{task.subject || '综合'}</span>
+                  <span className="model-kind-pill">{taskTypeLabel(task.taskType)}</span>
                 </div>
-                <div className="task-row__actions">
-                  <button className="model-icon-btn" type="button" onClick={() => handleStartOnline(task)}>
-                    <Eye size={14} />
-                  </button>
-                  <button className="model-icon-btn" type="button" onClick={() => downloadAsPdf(task)}>
-                    <Download size={14} />
-                  </button>
-                  <button
-                    className="model-icon-btn model-icon-btn--danger"
-                    type="button"
-                    onClick={() => removeTask(task.id)}
-                  >
-                    <Trash2 size={14} />
-                  </button>
+                <p>{task.question || task.description || '暂无内容'}</p>
+                <div className="task-board-card__foot">
+                  <span>{dueLabel(task)}</span>
+                  <span className="task-board-source">{sourceLabel(task.source)}</span>
                 </div>
-              </div>
+              </button>
             ))}
 
-            {tasks.length === 0 && <div className="model-empty">暂无家庭作业，可手动生成或从对话自动创建。</div>}
+            {taskColumns.inProgress.length === 0 && <div className="model-empty">暂无进行中作业</div>}
           </div>
+        </article>
 
-          {activeTask && (
-            <div className="task-online-panel">
-              <div className="task-online-panel__title">
-                在线作答：{activeTask.title}
-                <span className="task-online-panel__type">{activeTaskTypeLabel}</span>
+        <article className="task-board-column">
+          <header className="task-board-column__head">
+            <span>✅ 已完成</span>
+            <span className="session-count">{taskColumns.done.length}</span>
+          </header>
+
+          <div className="task-board-list">
+            {taskColumns.done.map((task) => (
+              <button
+                key={task.id}
+                className={`task-board-card ${statusColorClass(task)}`}
+                type="button"
+                onClick={() => setDetailTask(task)}
+              >
+                <strong>{task.title}</strong>
+                <div className="task-board-card__meta">
+                  <span className="model-kind-pill">{task.subject || '综合'}</span>
+                  <span className="model-kind-pill">{taskTypeLabel(task.taskType)}</span>
+                </div>
+                <p>{task.question || task.description || '暂无内容'}</p>
+                <div className="task-board-card__foot">
+                  <span>{task.completedAt ? `完成：${new Date(task.completedAt).toLocaleDateString('zh-CN')}` : '已完成'}</span>
+                </div>
+              </button>
+            ))}
+
+            {taskColumns.done.length === 0 && <div className="model-empty">暂无已完成作业</div>}
+          </div>
+        </article>
+      </div>
+
+      {detailTask && (
+        <div
+          className="task-modal-backdrop"
+          role="dialog"
+          aria-modal="true"
+          aria-label="作业详情"
+          onClick={() => setDetailTask(null)}
+        >
+          <article className="task-modal" onClick={(event) => event.stopPropagation()}>
+            <header className="task-modal__head">
+              <div>
+                <h3>{detailTask.title}</h3>
+                <p>
+                  {detailTask.childName || '未绑定孩子'} · {detailTask.subject || '综合'} ·{' '}
+                  {taskTypeLabel(detailTask.taskType)}
+                </p>
               </div>
 
-              <p className="task-online-panel__question">{activeTask.question || activeTask.description}</p>
+              <button className="model-icon-btn" type="button" onClick={() => setDetailTask(null)}>
+                <X size={14} />
+              </button>
+            </header>
 
-              {activeTask.options && activeTask.options.length > 0 && (
-                <div className="task-online-options">
-                  {activeTask.options.map((option) => (
-                    <span key={option} className="chat-linked-task-chip">
-                      {option}
-                    </span>
-                  ))}
-                </div>
-              )}
+            <section className="task-modal__body">
+              <p>{detailTask.question || detailTask.description || '暂无题目内容'}</p>
 
-              {activeTask.recitationChecklist && activeTask.recitationChecklist.length > 0 && (
+              {detailTask.options && detailTask.options.length > 0 && (
                 <div className="task-online-options">
-                  {activeTask.recitationChecklist.map((item) => (
+                  {detailTask.options.map((item) => (
                     <span key={item} className="chat-linked-task-chip">
                       {item}
                     </span>
@@ -377,22 +294,28 @@ export function TaskPage() {
                 </div>
               )}
 
-              <textarea
-                className="field__input child-textarea"
-                value={onlineAnswer}
-                onChange={(event) => setOnlineAnswer(event.target.value)}
-                placeholder="在线填写答案、简答、背诵记录或练字说明"
-              />
+              {detailTask.recitationChecklist && detailTask.recitationChecklist.length > 0 && (
+                <div className="task-online-options">
+                  {detailTask.recitationChecklist.map((item) => (
+                    <span key={item} className="chat-linked-task-chip">
+                      {item}
+                    </span>
+                  ))}
+                </div>
+              )}
+            </section>
 
-              <div className="model-editor-actions model-editor-actions--compact">
-                <button className="home-btn home-btn--primary" type="button" onClick={handleSubmitOnline}>
-                  <Save size={16} /> 提交并标记完成
-                </button>
-              </div>
-            </div>
-          )}
-        </article>
-      </div>
+            <footer className="task-modal__foot">
+              <button className="home-btn" type="button" onClick={() => setDetailTask(null)}>
+                关闭
+              </button>
+              <button className="home-btn home-btn--primary" type="button" onClick={() => downloadAsPdf(detailTask)}>
+                <Download size={16} /> 导出作业
+              </button>
+            </footer>
+          </article>
+        </div>
+      )}
     </section>
   )
 }
